@@ -1,0 +1,50 @@
+# encoding: utf-8
+
+default_platform(:android)
+
+platform :android do
+  before_all do
+    ENV["DEPLOYGATE_API_KEY"] = ""
+    ENV["DEPLOYGATE_USER"] = ""
+    ENV["BRANCH_NAME"] = git_branch
+    ENV["COMMIT_MESSAGE"] = last_git_commit[:message]
+    ENV["SLACK_URL"] = ""
+
+    gradle(task: "clean")
+  end
+
+  desc "Runs all the Tests"
+  lane :lint do
+    danger
+  end
+
+  desc "Deploy to Develop"
+  lane :develop_deploy do
+    if /(skip_deploy)/ =~ ENV["COMMIT_MESSAGE"]
+      next
+    end
+    gradle(
+      task: "assemble",
+      build_type: "Debug",
+    )
+
+    upload_deploy_gate
+  end
+
+  desc "Upload to Deploy Gate"
+  lane :upload_deploy_gate do
+    title, *, body = ENV["COMMIT_MESSAGE"].partition("\n")
+    deploygate(
+      api_token: ENV["DEPLOYGATE_API_KEY"],
+      user: ENV["DEPLOYGATE_USER"],
+      message: " [#{ENV["BRANCH_NAME"]}]\n LastCommit: (#{title} )",
+    )
+  end
+
+  error do |lane, exception|
+    slack(
+      message: exception.message,
+      success: false,
+    )
+  end
+end

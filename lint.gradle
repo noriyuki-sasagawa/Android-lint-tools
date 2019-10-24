@@ -1,0 +1,46 @@
+apply plugin: "org.jlleitschuh.gradle.ktlint"
+apply plugin: "org.jlleitschuh.gradle.ktlint-idea"
+
+ktlint {
+    version = "0.22.0"
+    android = true
+    reporters {
+        reporter "checkstyle"
+    }
+    ignoreFailures = true
+
+    filter {
+        exclude("**/*test*/**")
+    }
+}
+
+apply plugin: 'checkstyle'
+task checkStyle(type: Checkstyle) {
+    ignoreFailures = true
+    configFile = new File("${project.rootDir}/config/checkstyle/checkstyle.xml")
+    source = 'src/main'
+    include('**/*.java')
+    reports {
+        xml.enabled = true
+        html.enabled = true
+    }
+    classpath = files()
+}
+
+apply plugin: 'findbugs'
+task findBugs(type: FindBugs) {
+    ignoreFailures = true
+    effort = "max"
+    reportLevel = "low" // ＊どのレベルの報告まで対応するかで変更＊
+    excludeFilter = new File("${project.rootDir}/config/findbugs/findbugs_filter.xml")
+    classes = files("${project.projectDir}/build/intermediates/javac")
+    source = 'src/main'
+    include('**/*.java')
+    reports {
+        html.enabled = true
+        xml.enabled = false
+    }
+    classpath = files()
+}
+
+lint.dependsOn(checkStyle, findBugs)
